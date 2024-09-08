@@ -8,8 +8,13 @@
 #ifndef __SI1133_HW_H__
 #define __SI1133_HW_H__
 
+#ifndef SI1133_DRIVER_DISABLE_FLAGS_FILE
+#include "si1133_driver_flags.h"
+#endif
 #include "si1133.h"
 #include "types.h"
+
+#ifndef SI1133_DRIVER_DISABLE
 
 /*** SI1133 HW functions ***/
 
@@ -61,5 +66,7 @@ SI1133_status_t SI1133_HW_i2c_read(uint8_t i2c_address, uint8_t* data, uint8_t d
  * \retval		Function execution status.
  *******************************************************************/
 SI1133_status_t SI1133_HW_delay_milliseconds(uint32_t delay_ms);
+
+#endif /* SI1133_DRIVER_DISABLE */
 
 #endif /* __SI1133_HW_H__ */

@@ -39,6 +39,8 @@ typedef enum {
 	SI1133_ERROR_BASE_LAST = (SI1133_ERROR_BASE_DELAY + SI1133_DRIVER_DELAY_ERROR_BASE_LAST)
 } SI1133_status_t;
 
+#ifndef SI1133_DRIVER_DISABLE
+
 /*** SI1133 functions ***/
 
 /*!******************************************************************
@@ -76,5 +78,7 @@ SI1133_status_t SI1133_get_uv_index(uint8_t i2c_address, int32_t* uv_index);
 
 /*******************************************************************/
 #define SI1133_stack_exit_error(base, code) { ERROR_check_stack_exit(si1133_status, SI1133_SUCCESS, base, code) }
+
+#endif /* SI1133_DRIVER_DISABLE */
 
 #endif /* __SI1133_H__ */

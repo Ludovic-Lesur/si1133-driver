@@ -7,8 +7,13 @@
 
 #include "si1133.h"
 
+#ifndef SI1133_DRIVER_DISABLE_FLAGS_FILE
+#include "si1133_driver_flags.h"
+#endif
 #include "si1133_hw.h"
 #include "types.h"
+
+#ifndef SI1133_DRIVER_DISABLE
 
 /*** SI1133 local macros ***/
 
@@ -365,3 +370,5 @@ SI1133_status_t SI1133_get_uv_index(uint8_t i2c_address, int32_t* uv_index) {
 errors:
 	return status;
 }
+
+#endif /* SI1133_DRIVER_DISABLE */

@@ -7,8 +7,13 @@
 
 #include "si1133_hw.h"
 
+#ifndef SI1133_DRIVER_DISABLE_FLAGS_FILE
+#include "si1133_driver_flags.h"
+#endif
 #include "si1133.h"
 #include "types.h"
+
+#ifndef SI1133_DRIVER_DISABLE
 
 /*** SI1133 HW functions ***/
 
@@ -59,3 +64,5 @@ SI1133_status_t __attribute__((weak)) SI1133_HW_delay_milliseconds(uint32_t dela
 	UNUSED(delay_ms);
 	return status;
 }
+
+#endif /* SI1133_DRIVER_DISABLE */
