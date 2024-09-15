@@ -122,7 +122,7 @@ typedef enum {
 
 /*** SI1133 local function declarations ***/
 
-static SI1133_status_t _SI1133_send_command(uint8_t i2c_address, uint8_t command);
+static SI1133_status_t _SI1133_send_command(uint8_t i2c_address, SI1133_commmand_t command);
 
 /*** SI1133 local functions ***/
 
