@@ -10,7 +10,7 @@
 
 /*** SI1133 driver compilation flags ***/
 
-#define SI1133_DRIVER_I2C_ERROR_BASE_LAST		0
-#define SI1133_DRIVER_DELAY_ERROR_BASE_LAST		0
+#define SI1133_DRIVER_I2C_ERROR_BASE_LAST       0
+#define SI1133_DRIVER_DELAY_ERROR_BASE_LAST     0
 
 #endif /* __SI1133_DRIVER_FLAGS_H__ */

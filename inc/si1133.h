@@ -15,7 +15,7 @@
 
 /*** SI1133 macros ***/
 
-#define SI1133_ERROR_CODE_LAST	0x0F
+#define SI1133_ERROR_CODE_LAST  0x0F
 
 /*** SI1133 structures ***/
 
@@ -24,19 +24,19 @@
  * \brief SI1133 driver error codes.
  *******************************************************************/
 typedef enum {
-	// Driver errors.
-	SI1133_SUCCESS = 0,
-	SI1133_ERROR_NULL_PARAMETER,
-	SI1133_ERROR_READY,
-	SI1133_ERROR_COMMAND_COMPLETION,
-	SI1133_ERROR_PARAMETER_COMPLETION = (SI1133_ERROR_COMMAND_COMPLETION + SI1133_ERROR_CODE_LAST),
-	SI1133_ERROR_COMMAND_COUNTER = (SI1133_ERROR_PARAMETER_COMPLETION + SI1133_ERROR_CODE_LAST),
-	SI1133_ERROR_TIMEOUT,
-	// Low level drivers errors.
-	SI1133_ERROR_BASE_I2C = 0x0100,
-	SI1133_ERROR_BASE_DELAY = (SI1133_ERROR_BASE_I2C + SI1133_DRIVER_I2C_ERROR_BASE_LAST),
-	// Last base value.
-	SI1133_ERROR_BASE_LAST = (SI1133_ERROR_BASE_DELAY + SI1133_DRIVER_DELAY_ERROR_BASE_LAST)
+    // Driver errors.
+    SI1133_SUCCESS = 0,
+    SI1133_ERROR_NULL_PARAMETER,
+    SI1133_ERROR_READY,
+    SI1133_ERROR_COMMAND_COMPLETION,
+    SI1133_ERROR_PARAMETER_COMPLETION = (SI1133_ERROR_COMMAND_COMPLETION + SI1133_ERROR_CODE_LAST),
+    SI1133_ERROR_COMMAND_COUNTER = (SI1133_ERROR_PARAMETER_COMPLETION + SI1133_ERROR_CODE_LAST),
+    SI1133_ERROR_TIMEOUT,
+    // Low level drivers errors.
+    SI1133_ERROR_BASE_I2C = 0x0100,
+    SI1133_ERROR_BASE_DELAY = (SI1133_ERROR_BASE_I2C + SI1133_DRIVER_I2C_ERROR_BASE_LAST),
+    // Last base value.
+    SI1133_ERROR_BASE_LAST = (SI1133_ERROR_BASE_DELAY + SI1133_DRIVER_DELAY_ERROR_BASE_LAST)
 } SI1133_status_t;
 
 #ifndef SI1133_DRIVER_DISABLE
@@ -46,27 +46,27 @@ typedef enum {
 /*!******************************************************************
  * \fn SI1133_status_t SI1133_init(void)
  * \brief Init SI1133 driver.
- * \param[in]  	none
- * \param[out] 	none
- * \retval		Function execution status.
+ * \param[in]   none
+ * \param[out]  none
+ * \retval      Function execution status.
  *******************************************************************/
 SI1133_status_t SI1133_init(void);
 
 /*!******************************************************************
  * \fn SI1133_status_t SI1133_de_init(void)
  * \brief Release SI1133 driver.
- * \param[in]  	none
- * \param[out] 	none
- * \retval		Function execution status.
+ * \param[in]   none
+ * \param[out]  none
+ * \retval      Function execution status.
  *******************************************************************/
 SI1133_status_t SI1133_de_init(void);
 
 /*!******************************************************************
  * \fn SI1133_status_t SI1133_perform_measurements(uint8_t i2c_address)
  * \brief Perform UV index measurements.
- * \param[in]  	i2c_address: I2C address of the sensor.
- * \param[out] 	uv_index: Pointer to integer that will contain the UV index.
- * \retval		Function execution status.
+ * \param[in]   i2c_address: I2C address of the sensor.
+ * \param[out]  uv_index: Pointer to integer that will contain the UV index.
+ * \retval      Function execution status.
  *******************************************************************/
 SI1133_status_t SI1133_get_uv_index(uint8_t i2c_address, int32_t* uv_index);
 
