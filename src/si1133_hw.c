@@ -20,7 +20,7 @@
 /*******************************************************************/
 SI1133_status_t __attribute__((weak)) SI1133_HW_init(void) {
     // Local variables.
-    SI1133_status_t status = SI1133_SUCCESS;
+    SI1133_status_t status = SI1133_ERROR_HW_FUNCTION_NOT_IMPLEMENTED;
     /* To be implemented */
     return status;
 }
@@ -28,7 +28,7 @@ SI1133_status_t __attribute__((weak)) SI1133_HW_init(void) {
 /*******************************************************************/
 SI1133_status_t __attribute__((weak)) SI1133_HW_de_init(void) {
     // Local variables.
-    SI1133_status_t status = SI1133_SUCCESS;
+    SI1133_status_t status = SI1133_ERROR_HW_FUNCTION_NOT_IMPLEMENTED;
     /* To be implemented */
     return status;
 }
@@ -36,7 +36,7 @@ SI1133_status_t __attribute__((weak)) SI1133_HW_de_init(void) {
 /*******************************************************************/
 SI1133_status_t __attribute__((weak)) SI1133_HW_i2c_write(uint8_t i2c_address, uint8_t* data, uint8_t data_size_bytes, uint8_t stop_flag) {
     // Local variables.
-    SI1133_status_t status = SI1133_SUCCESS;
+    SI1133_status_t status = SI1133_ERROR_HW_FUNCTION_NOT_IMPLEMENTED;
     /* To be implemented */
     UNUSED(i2c_address);
     UNUSED(data);
@@ -48,7 +48,7 @@ SI1133_status_t __attribute__((weak)) SI1133_HW_i2c_write(uint8_t i2c_address, u
 /*******************************************************************/
 SI1133_status_t __attribute__((weak)) SI1133_HW_i2c_read(uint8_t i2c_address, uint8_t* data, uint8_t data_size_bytes) {
     // Local variables.
-    SI1133_status_t status = SI1133_SUCCESS;
+    SI1133_status_t status = SI1133_ERROR_HW_FUNCTION_NOT_IMPLEMENTED;
     /* To be implemented */
     UNUSED(i2c_address);
     UNUSED(data);
@@ -59,7 +59,7 @@ SI1133_status_t __attribute__((weak)) SI1133_HW_i2c_read(uint8_t i2c_address, ui
 /*******************************************************************/
 SI1133_status_t __attribute__((weak)) SI1133_HW_delay_milliseconds(uint32_t delay_ms) {
     // Local variables.
-    SI1133_status_t status = SI1133_SUCCESS;
+    SI1133_status_t status = SI1133_ERROR_HW_FUNCTION_NOT_IMPLEMENTED;
     /* To be implemented */
     UNUSED(delay_ms);
     return status;
