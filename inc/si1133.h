@@ -74,13 +74,14 @@ SI1133_status_t SI1133_init(void);
 SI1133_status_t SI1133_de_init(void);
 
 /*!******************************************************************
- * \fn SI1133_status_t SI1133_perform_measurements(uint8_t i2c_address)
- * \brief Perform UV index measurements.
+ * \fn SI1133_status_t SI1133_get_light_uv_index(uint8_t i2c_address, int32_t* light_mlux, int32_t* uv_index_duvi)
+ * \brief Perform ambient light and UV index measurements.
  * \param[in]   i2c_address: I2C address of the sensor.
- * \param[out]  uv_index: Pointer to integer that will contain the UV index.
+ * \param[out]  light_mlux: Pointer to integer that will contain the ambient light in mlux.
+ * \param[out]  uv_index_duvi: Pointer to integer that will contain the UV index in dUVI.
  * \retval      Function execution status.
  *******************************************************************/
-SI1133_status_t SI1133_get_uv_index(uint8_t i2c_address, int32_t* uv_index);
+SI1133_status_t SI1133_get_light_uv_index(uint8_t i2c_address, int32_t* light_mlux, int32_t* uv_index_duvi);
 
 /*******************************************************************/
 #define SI1133_exit_error(base) { ERROR_check_exit(si1133_status, SI1133_SUCCESS, base) }
