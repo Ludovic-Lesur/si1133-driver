@@ -127,36 +127,47 @@ static SI1133_status_t _SI1133_send_command(uint8_t i2c_address, SI1133_commmand
 /*** SI1133 local functions ***/
 
 /*******************************************************************/
-static SI1133_status_t _SI1133_write_register(uint8_t i2c_address, SI1133_register_t register_address, uint8_t* data, uint8_t data_size_bytes) {
+static SI1133_status_t _SI1133_write_register(uint8_t i2c_address, SI1133_register_t reg_addr, uint8_t* data, uint8_t data_size_bytes) {
     // Local variables.
     SI1133_status_t status = SI1133_SUCCESS;
     uint8_t register_write_command[SI1133_BURST_WRITE_MAX_SIZE];
-    uint8_t tx_buf_length = (data_size_bytes + 1);
+    uint8_t tx_buffer_size = (data_size_bytes + 1);
     uint8_t idx = 0;
-    // Clamp buffer length.
-    if (tx_buf_length >= SI1133_BURST_WRITE_MAX_SIZE) {
-        tx_buf_length = (SI1133_BURST_WRITE_MAX_SIZE - 1);
+    // Check parameters.
+    if (reg_addr >= SI1133_REGISTER_LAST) {
+        status = SI1133_ERROR_REGISTER;
+        goto errors;
+    }
+    if (tx_buffer_size >= SI1133_BURST_WRITE_MAX_SIZE) {
+        status = SI1133_ERROR_WRITE_BUFFER_SIZE;
+        goto errors;
     }
     // Build TX buffer.
-    register_write_command[0] = register_address;
-    for (idx = 1; idx < tx_buf_length; idx++) {
+    register_write_command[0] = reg_addr;
+    for (idx = 1; idx < tx_buffer_size; idx++) {
         register_write_command[idx] = data[idx - 1];
     }
     // I2C transfer.
-    status = SI1133_HW_i2c_write(i2c_address, register_write_command, tx_buf_length, 1);
+    status = SI1133_HW_i2c_write(i2c_address, register_write_command, tx_buffer_size, 1);
     if (status != SI1133_SUCCESS) goto errors;
 errors:
     return status;
 }
 
 /*******************************************************************/
-static SI1133_status_t _SI1133_read_register(uint8_t i2c_address, SI1133_register_t register_address, uint8_t* value) {
+static SI1133_status_t _SI1133_read_register(uint8_t i2c_address, SI1133_register_t reg_addr, uint8_t* data, uint8_t data_size_bytes) {
     // Local variables.
     SI1133_status_t status = SI1133_SUCCESS;
+    uint8_t local_addr = reg_addr;
+    // Check parameters.
+    if (reg_addr >= SI1133_REGISTER_LAST) {
+        status = SI1133_ERROR_REGISTER;
+        goto errors;
+    }
     // I2C transfer.
-    status = SI1133_HW_i2c_write(i2c_address, &register_address, 1, 1);
+    status = SI1133_HW_i2c_write(i2c_address, &local_addr, 1, 1);
     if (status != SI1133_SUCCESS) goto errors;
-    status = SI1133_HW_i2c_read(i2c_address, value, 1);
+    status = SI1133_HW_i2c_read(i2c_address, data, data_size_bytes);
     if (status != SI1133_SUCCESS) goto errors;
 errors:
     return status;
@@ -168,12 +179,11 @@ static SI1133_status_t _SI1133_wait_flag(uint8_t i2c_address, SI1133_register_t 
     SI1133_status_t status = SI1133_SUCCESS;
     uint8_t reg_value = 0;
     uint32_t loop_count_ms = 0;
-    // Read register.
-    status = _SI1133_read_register(i2c_address, register_address, &reg_value);
-    if (status != SI1133_SUCCESS) goto errors;
     // Wait for flag to be set.
-    while ((reg_value & (0b1 << bit_index)) == 0) {
-        // Low power delay.
+    do {
+        status = _SI1133_read_register(i2c_address, register_address, &reg_value, 1);
+        if (status != SI1133_SUCCESS) goto errors;
+        // Delay between reading.
         status = SI1133_HW_delay_milliseconds(SI1133_SUB_DELAY_MS);
         if (status != SI1133_SUCCESS) goto errors;
         // Exit if timeout.
@@ -182,11 +192,8 @@ static SI1133_status_t _SI1133_wait_flag(uint8_t i2c_address, SI1133_register_t 
             status = timeout_error;
             goto errors;
         }
-        // Read register.
-        status = _SI1133_read_register(i2c_address, register_address, &reg_value);
-        if (status != SI1133_SUCCESS) goto errors;
-        
     }
+    while ((reg_value & (0b1 << bit_index)) == 0);
 errors:
     return status;
 }
@@ -197,15 +204,18 @@ static SI1133_status_t _SI1133_get_status(uint8_t i2c_address, uint8_t* command_
     SI1133_status_t status = SI1133_SUCCESS;
     uint8_t response0 = 0;
     // Get counter.
-    status = _SI1133_read_register(i2c_address, SI1133_REGISTER_RESPONSE0, &response0);
+    status = _SI1133_read_register(i2c_address, SI1133_REGISTER_RESPONSE0, &response0, 1);
     if (status != SI1133_SUCCESS) goto errors;
     // Extract command counter and flag.
-    (*command_counter) = response0 & 0x0F;
-    (*error_flag) = response0 & 0x10;
+    (*command_counter) = (response0 & 0x0F);
+    (*error_flag) = (response0 & 0x10);
     // Reset counter when overflow.
     if ((*command_counter) >= 0x0F) {
+        // Reset counter.
         status = _SI1133_send_command(i2c_address, SI1133_COMMAND_RESET_CMD_CTR);
         if (status != SI1133_SUCCESS) goto errors;
+        // Update output.
+        (*command_counter) = 0;
     }
 errors:
     return status;
@@ -249,6 +259,9 @@ static SI1133_status_t _SI1133_send_command(uint8_t i2c_address, SI1133_commmand
     SI1133_status_t status = SI1133_SUCCESS;
     uint8_t previous_counter = 0;
     uint8_t error_flag = 0;
+    // Wait for the chip to be ready.
+    status = _SI1133_wait_flag(i2c_address, SI1133_REGISTER_RESPONSE0, 5, SI1133_ERROR_READY);
+    if (status != SI1133_SUCCESS) goto errors;
     // Get current value of counter in RESPONSE0 register.
     if (command != SI1133_COMMAND_RESET_CMD_CTR) {
         status = _SI1133_get_status(i2c_address, &previous_counter, &error_flag);
@@ -276,6 +289,9 @@ static SI1133_status_t _SI1133_set_parameter(uint8_t i2c_address, SI1133_paramet
     // Build command.
     parameter_write_command[0] = value;
     parameter_write_command[1] = 0x80 + (parameter & 0x3F);
+    // Wait for the chip to be ready.
+    status = _SI1133_wait_flag(i2c_address, SI1133_REGISTER_RESPONSE0, 5, SI1133_ERROR_READY);
+    if (status != SI1133_SUCCESS) goto errors;
     // Get current value of counter in RESPONSE0 register.
     status = _SI1133_get_status(i2c_address, &previous_counter, &error_flag);
     if (status != SI1133_SUCCESS) goto errors;
@@ -357,10 +373,10 @@ SI1133_status_t SI1133_get_uv_index(uint8_t i2c_address, int32_t* uv_index) {
     status = _SI1133_wait_flag(i2c_address, SI1133_REGISTER_IRQ_STATUS, 0, SI1133_ERROR_TIMEOUT);
     if (status != SI1133_SUCCESS) goto errors;
     // Get result.
-    status = _SI1133_read_register(i2c_address, SI1133_REGISTER_HOSTOUT0, &response0);
+    status = _SI1133_read_register(i2c_address, SI1133_REGISTER_HOSTOUT0, &response0, 1);
     if (status != SI1133_SUCCESS) goto errors;
     raw_uv |= (int32_t) (response0 << 8);
-    status = _SI1133_read_register(i2c_address, SI1133_REGISTER_HOSTOUT1, &response0);
+    status = _SI1133_read_register(i2c_address, SI1133_REGISTER_HOSTOUT1, &response0, 1);
     if (status != SI1133_SUCCESS) goto errors;
     // Convert to UV index.
     // UV index = k * ((m * raw^2) + raw) where k = 0.008284 = 1 / 121 and m = -0.000231 = -1 / 4329.
