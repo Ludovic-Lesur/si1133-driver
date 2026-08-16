@@ -120,10 +120,6 @@ typedef enum {
     SI1133_COMMAND_LAST
 } SI1133_commmand_t;
 
-/*** SI1133 local function declarations ***/
-
-static SI1133_status_t _SI1133_send_command(uint8_t i2c_address, SI1133_commmand_t command);
-
 /*** SI1133 local functions ***/
 
 /*******************************************************************/
@@ -199,6 +195,18 @@ errors:
 }
 
 /*******************************************************************/
+static SI1133_status_t _SI1133_send_command(uint8_t i2c_address, SI1133_commmand_t command) {
+    // Local variables.
+    SI1133_status_t status = SI1133_SUCCESS;
+    uint8_t local_command = command;
+    // Send command.
+    status = _SI1133_write_register(i2c_address, SI1133_REGISTER_COMMAND, &local_command, 1);
+    if (status != SI1133_SUCCESS) goto errors;
+errors:
+    return status;
+}
+
+/*******************************************************************/
 static SI1133_status_t _SI1133_get_status(uint8_t i2c_address, uint8_t* command_counter, uint8_t* error_flag) {
     // Local variables.
     SI1133_status_t status = SI1133_SUCCESS;
@@ -254,7 +262,7 @@ errors:
 }
 
 /*******************************************************************/
-static SI1133_status_t _SI1133_send_command(uint8_t i2c_address, SI1133_commmand_t command) {
+static SI1133_status_t _SI1133_send_command_with_completion(uint8_t i2c_address, SI1133_commmand_t command) {
     // Local variables.
     SI1133_status_t status = SI1133_SUCCESS;
     uint8_t previous_counter = 0;
@@ -263,24 +271,20 @@ static SI1133_status_t _SI1133_send_command(uint8_t i2c_address, SI1133_commmand
     status = _SI1133_wait_flag(i2c_address, SI1133_REGISTER_RESPONSE0, 5, SI1133_ERROR_READY);
     if (status != SI1133_SUCCESS) goto errors;
     // Get current value of counter in RESPONSE0 register.
-    if (command != SI1133_COMMAND_RESET_CMD_CTR) {
-        status = _SI1133_get_status(i2c_address, &previous_counter, &error_flag);
-        if (status != SI1133_SUCCESS) goto errors;
-    }
+    status = _SI1133_get_status(i2c_address, &previous_counter, &error_flag);
+    if (status != SI1133_SUCCESS) goto errors;
     // Send command.
     status = _SI1133_write_register(i2c_address, SI1133_REGISTER_COMMAND, &command, 1);
     if (status != SI1133_SUCCESS) goto errors;
     // Wait for completion.
-    if (command != SI1133_COMMAND_RESET_CMD_CTR) {
-        status = _SI1133_wait_for_command_completion(i2c_address, previous_counter, SI1133_ERROR_COMMAND_COMPLETION);
-        if (status != SI1133_SUCCESS) goto errors;
-    }
+    status = _SI1133_wait_for_command_completion(i2c_address, previous_counter, SI1133_ERROR_COMMAND_COMPLETION);
+    if (status != SI1133_SUCCESS) goto errors;
 errors:
     return status;
 }
 
 /*******************************************************************/
-static SI1133_status_t _SI1133_set_parameter(uint8_t i2c_address, SI1133_parameter_t parameter, uint8_t value) {
+static SI1133_status_t _SI1133_set_parameter_with_completion(uint8_t i2c_address, SI1133_parameter_t parameter, uint8_t value) {
     // Local variables.
     SI1133_status_t status = SI1133_SUCCESS;
     uint8_t parameter_write_command[2];
@@ -311,13 +315,13 @@ static SI1133_status_t _SI1133_configure(uint8_t i2c_address) {
     SI1133_status_t status = SI1133_SUCCESS;
     uint8_t irq0_enable = 0x01;
     // Configure channel 0 to compute UV index.
-    status = _SI1133_set_parameter(i2c_address, SI1133_PARAMETER_CH_LIST, 0x01); // Enable channel 0.
+    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_CH_LIST, 0x01); // Enable channel 0.
     if (status != SI1133_SUCCESS) goto errors;
-    status = _SI1133_set_parameter(i2c_address, SI1133_PARAMETER_ADCCONFIG0, 0x18); // ADCMUX='11000' (UV index).
+    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_ADCCONFIG0, 0x18); // ADCMUX='11000' (UV index).
     if (status != SI1133_SUCCESS) goto errors;
-    status = _SI1133_set_parameter(i2c_address, SI1133_PARAMETER_ADCSENS0, 0x71);
+    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_ADCSENS0, 0x71);
     if (status != SI1133_SUCCESS) goto errors;
-    status = _SI1133_set_parameter(i2c_address, SI1133_PARAMETER_ADCPOST0, 0x00); // 16-bits results.
+    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_ADCPOST0, 0x00); // 16-bits results.
     if (status != SI1133_SUCCESS) goto errors;
     status = _SI1133_write_register(i2c_address, SI1133_REGISTER_IRQ_ENABLE, &irq0_enable, 1);
     if (status != SI1133_SUCCESS) goto errors;
@@ -367,7 +371,7 @@ SI1133_status_t SI1133_get_uv_index(uint8_t i2c_address, int32_t* uv_index) {
     status = _SI1133_configure(i2c_address);
     if (status != SI1133_SUCCESS) goto errors;
     // Start conversion.
-    status = _SI1133_send_command(i2c_address, SI1133_COMMAND_FORCE_CH);
+    status = _SI1133_send_command_with_completion(i2c_address, SI1133_COMMAND_FORCE_CH);
     if (status != SI1133_SUCCESS) goto errors;
     // Wait for conversion to complete (IRQ0='1').
     status = _SI1133_wait_flag(i2c_address, SI1133_REGISTER_IRQ_STATUS, 0, SI1133_ERROR_TIMEOUT);
