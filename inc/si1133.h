@@ -14,11 +14,19 @@
 #include "error.h"
 #include "types.h"
 
-/*** SI1133 macros ***/
-
-#define SI1133_ERROR_CODE_LAST  0x0F
-
 /*** SI1133 structures ***/
+
+/*!******************************************************************
+ * \enum SI1133_command_error_t
+ * \brief SI1133 internal command error codes.
+ *******************************************************************/
+typedef enum {
+    SI1133_COMMAND_ERROR_INVALID = 0x00,
+    SI1133_COMMAND_ERROR_LOCATION = 0x01,
+    SI1133_COMMAND_ERROR_SATURATION = 0x02,
+    SI1133_COMMAND_ERROR_OVERFLOW = 0x03,
+    SI1133_COMMAND_ERROR_LAST = 0x0F
+} SI1133_command_error_t;
 
 /*!******************************************************************
  * \enum SI1133_status_t
@@ -30,8 +38,8 @@ typedef enum {
     SI1133_ERROR_NULL_PARAMETER,
     SI1133_ERROR_READY,
     SI1133_ERROR_COMMAND_COMPLETION,
-    SI1133_ERROR_PARAMETER_COMPLETION = (SI1133_ERROR_COMMAND_COMPLETION + SI1133_ERROR_CODE_LAST),
-    SI1133_ERROR_COMMAND_COUNTER = (SI1133_ERROR_PARAMETER_COMPLETION + SI1133_ERROR_CODE_LAST),
+    SI1133_ERROR_PARAMETER_COMPLETION = (SI1133_ERROR_COMMAND_COMPLETION + SI1133_COMMAND_ERROR_LAST),
+    SI1133_ERROR_COMMAND_COUNTER = (SI1133_ERROR_PARAMETER_COMPLETION + SI1133_COMMAND_ERROR_LAST),
     SI1133_ERROR_TIMEOUT,
     // Low level drivers errors.
     SI1133_ERROR_HW_FUNCTION_NOT_IMPLEMENTED,

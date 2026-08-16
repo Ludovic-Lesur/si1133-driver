@@ -215,7 +215,6 @@ errors:
 static SI1133_status_t _SI1133_wait_for_command_completion(uint8_t i2c_address, uint8_t previous_counter, SI1133_status_t error_base) {
     // Local variables.
     SI1133_status_t status = SI1133_SUCCESS;
-    uint8_t response0 = 0;
     uint8_t current_counter = 0;
     uint8_t error_flag = 0;
     uint32_t loop_count_ms = 0;
@@ -226,7 +225,7 @@ static SI1133_status_t _SI1133_wait_for_command_completion(uint8_t i2c_address, 
         if (status != SI1133_SUCCESS) goto errors;
         // Check flag.
         if (error_flag != 0) {
-            status = error_base + (response0 & 0x0F);
+            status = (error_base + (current_counter & 0x0F));
             goto errors;
         }
         // Low power delay.
