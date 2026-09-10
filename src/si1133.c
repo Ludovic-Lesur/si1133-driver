@@ -11,6 +11,7 @@
 #include "si1133_driver_flags.h"
 #endif
 #include "si1133_hw.h"
+#include "maths.h"
 #include "types.h"
 
 #ifndef SI1133_DRIVER_DISABLE
@@ -45,6 +46,9 @@
 #define SI1133_GET_SIGN(m)                          ((m & SI1133_SIGN_MASK) >> 7)
 
 #define SI1133_HIGH_AMPLITUDE_THRESHOLD             16000
+
+#define SI1133_SATURATION_VALUE_24BITS              0x7FFFFF
+#define SI1133_SATURATION_VALUE_MLUX                128000000
 
 /*** SI1133 local structures ***/
 
@@ -385,15 +389,26 @@ errors:
 }
 
 /*******************************************************************/
-static int32_t _SI1133_compute_inner_polynomial(int32_t input, int8_t fraction, uint16_t magnitude, int8_t shift) {
+static int64_t _SI1133_compute_inner_polynomial(int32_t input, int8_t fraction, uint16_t magnitude, int8_t shift) {
     // Local variables.
-    int32_t value;
+    int64_t value = 0;
+    int64_t scaled_input = 0;
+    uint8_t s = 0;
+    // Check magnitude.
+    if (magnitude == 0) goto errors;
+    // Compute value.
+    scaled_input = ((int64_t) input << fraction);
+    value = (scaled_input / (int64_t) magnitude);
+    // Check shift direction.
     if (shift < 0) {
-        value = (((input << fraction) / magnitude) >> (-shift));
+        s = ((uint8_t) (-shift));
+        value >>= s;
     }
     else {
-        value = (((input << fraction) / magnitude) << shift);
+        s = ((uint8_t) shift);
+        value <<= s;
     }
+errors:
     return value;
 }
 
@@ -407,11 +422,12 @@ static int32_t _SI1133_compute_evaluation_polynomial(SI1133_polynomial_input_t* 
     int8_t sign = 0;
     int8_t shift = 0;
     uint16_t magnitude = 0;
-    int32_t output = 0;
-    int32_t x1 = 0;
-    int32_t x2 = 0;
-    int32_t y1 = 0;
-    int32_t y2 = 0;
+    int64_t term = 0;
+    int64_t output = 0;
+    int64_t x1 = 0;
+    int64_t x2 = 0;
+    int64_t y1 = 0;
+    int64_t y2 = 0;
     const SI1133_coefficient_t* coefficient_ptr = (input->coefficients_list);
     // Coefficients loop.
     for (counter = 0; counter < (input->coefficients_list_size); counter++) {
@@ -421,27 +437,16 @@ static int32_t _SI1133_compute_evaluation_polynomial(SI1133_polynomial_input_t* 
         x_order = SI1133_GET_X_ORDER(info);
         y_order = SI1133_GET_Y_ORDER(info);
         shift = (int8_t) (((uint16_t) (coefficient_ptr->info) & 0xFF00) >> 8);
-        shift = (int8_t) (shift ^ 0xFF);
-        shift += 1;
-        shift = (-shift);
-        if (SI1133_GET_SIGN(info) != 0) {
-            sign = -1;
-        }
-        else {
-            sign = 1;
-        }
+        shift = (int8_t) (~shift + 1);
+        shift = (int8_t) (-shift);
+        sign = ((SI1133_GET_SIGN(info) != 0) ? -1 : 1);
         if ((x_order == 0) && (y_order == 0)) {
-            output += (sign * (magnitude << (input->output_fraction)));
+            output += (((int64_t) sign) * (((int64_t) magnitude) << (input->output_fraction)));
         }
         else {
             if (x_order > 0) {
                 x1 = _SI1133_compute_inner_polynomial((input->x), (int8_t) (input->input_fraction), magnitude, shift);
-                if (x_order > 1) {
-                    x2 = _SI1133_compute_inner_polynomial((input->x), (int8_t) (input->input_fraction), magnitude, shift);
-                }
-                else {
-                    x2 = 1;
-                }
+                x2 = (x_order > 1) ? _SI1133_compute_inner_polynomial((input->x), (int8_t) (input->input_fraction), magnitude, shift) : 1;
             }
             else {
                 x1 = 1;
@@ -449,18 +454,14 @@ static int32_t _SI1133_compute_evaluation_polynomial(SI1133_polynomial_input_t* 
             }
             if (y_order > 0) {
                 y1 = _SI1133_compute_inner_polynomial((input->y), (int8_t) (input->input_fraction), magnitude, shift);
-                if (y_order > 1) {
-                    y2 = _SI1133_compute_inner_polynomial((input->y), (int8_t) (input->input_fraction), magnitude, shift);
-                }
-                else {
-                    y2 = 1;
-                }
+                y2 = (y_order > 1) ? _SI1133_compute_inner_polynomial((input->y), (int8_t) (input->input_fraction), magnitude, shift) : 1;
             }
             else {
                 y1 = 1;
                 y2 = 1;
             }
-            output += (sign * x1 * x2 * y1 * y2);
+            term = (((int64_t) sign) * x1 * x2 * y1 * y2);
+            output += term;
         }
         coefficient_ptr++;
     }
@@ -468,7 +469,11 @@ static int32_t _SI1133_compute_evaluation_polynomial(SI1133_polynomial_input_t* 
     if (output < 0) {
         output = (-output);
     }
-    return output;
+    // Clamp output.
+    if (output > MATH_S32_MAX) {
+        output = MATH_S32_MAX;
+    }
+    return ((int32_t) output);
 }
 
 /*** SI1133 functions ***/
@@ -496,7 +501,7 @@ errors:
 }
 
 /*******************************************************************/
-SI1133_status_t SI1133_get_light_uv_index(uint8_t i2c_address, int32_t* light_mlux, int32_t* uv_index_duvi) {
+SI1133_status_t SI1133_get_light_uv_index(uint8_t i2c_address, int32_t* light_mlux, int32_t* uv_index_duvi, SI1133_light_status_t* light_status) {
     // Local variables.
     SI1133_status_t status = SI1133_SUCCESS;
     uint8_t channel_mask = 0x0F;
@@ -508,10 +513,12 @@ SI1133_status_t SI1133_get_light_uv_index(uint8_t i2c_address, int32_t* light_ml
     int32_t tmp_s32 = 0;
     int64_t tmp_s64 = 0;
     // Check parameter.
-    if ((light_mlux == NULL) || (uv_index_duvi == NULL)) {
+    if ((light_mlux == NULL) || (uv_index_duvi == NULL) || (light_status == NULL)) {
         status = SI1133_ERROR_NULL_PARAMETER;
         goto errors;
     }
+    // Reset status.
+    (*light_status) = SI1133_LIGHT_STATUS_SENSOR_ERROR;
     // Reset chip.
     status = _SI1133_send_command(i2c_address, SI1133_COMMAND_RESET);
     if (status != SI1133_SUCCESS) goto errors;
@@ -570,23 +577,34 @@ SI1133_status_t SI1133_get_light_uv_index(uint8_t i2c_address, int32_t* light_ml
     polynomial_input.y = medium_ir;
     polynomial_input.output_fraction = SI1133_LIGHT_OUTPUT_FRACTION;
     // Check dynamic.
-    if ((large_white_high > SI1133_HIGH_AMPLITUDE_THRESHOLD) || (medium_ir > SI1133_HIGH_AMPLITUDE_THRESHOLD)) {
-        // High amplitude parameters.
-        polynomial_input.x = large_white_high;
-        polynomial_input.input_fraction = SI1133_LIGHT_HIGH_INPUT_FRACTION;
-        polynomial_input.coefficients_list = &(SI1133_LIGHT_COEFFICIENTS.coefficients_high[0]);
-        polynomial_input.coefficients_list_size = SI1133_LIGHT_HIGH_COEFFICIENTS_LIST_SIZE;
+    if ((large_white_high >= SI1133_SATURATION_VALUE_24BITS) || (medium_ir >= SI1133_SATURATION_VALUE_24BITS)) {
+        // Update status.
+        (*light_mlux) = SI1133_SATURATION_VALUE_MLUX;
+        (*light_status) = SI1133_LIGHT_STATUS_SENSOR_SATURATION;
     }
     else {
-        // Low amplitude parameters.
-        polynomial_input.x = large_white_low;
-        polynomial_input.input_fraction = SI1133_LIGHT_LOW_INPUT_FRACTION;
-        polynomial_input.coefficients_list = &(SI1133_LIGHT_COEFFICIENTS.coefficients_low[0]);
-        polynomial_input.coefficients_list_size = SI1133_LIGHT_LOW_COEFFICIENTS_LIST_SIZE;
+        // Check dynamic.
+        if ((large_white_high > SI1133_HIGH_AMPLITUDE_THRESHOLD) || (medium_ir > SI1133_HIGH_AMPLITUDE_THRESHOLD)) {
+            // High amplitude parameters.
+            polynomial_input.x = large_white_high;
+            polynomial_input.input_fraction = SI1133_LIGHT_HIGH_INPUT_FRACTION;
+            polynomial_input.coefficients_list = &(SI1133_LIGHT_COEFFICIENTS.coefficients_high[0]);
+            polynomial_input.coefficients_list_size = SI1133_LIGHT_HIGH_COEFFICIENTS_LIST_SIZE;
+        }
+        else {
+            // Low amplitude parameters.
+            polynomial_input.x = large_white_low;
+            polynomial_input.input_fraction = SI1133_LIGHT_LOW_INPUT_FRACTION;
+            polynomial_input.coefficients_list = &(SI1133_LIGHT_COEFFICIENTS.coefficients_low[0]);
+            polynomial_input.coefficients_list_size = SI1133_LIGHT_LOW_COEFFICIENTS_LIST_SIZE;
+        }
+        // Compute lux.
+        tmp_s32 = _SI1133_compute_evaluation_polynomial(&polynomial_input);
+        tmp_s64 = ((((int64_t) tmp_s32 * (int64_t) 1000) + (int64_t) (1 << (SI1133_LIGHT_OUTPUT_FRACTION - 1))) >> SI1133_LIGHT_OUTPUT_FRACTION);
+        (*light_mlux) = ((int32_t) tmp_s64);
+        // Update status.
+        (*light_status) = SI1133_LIGHT_STATUS_AVAILABLE;
     }
-    tmp_s32 = _SI1133_compute_evaluation_polynomial(&polynomial_input);
-    tmp_s64 = ((((int64_t) tmp_s32 * (int64_t) 1000) + (int64_t) (1 << (SI1133_LIGHT_OUTPUT_FRACTION - 1))) >> SI1133_LIGHT_OUTPUT_FRACTION);
-    (*light_mlux) = ((int32_t) tmp_s64);
     // Compute UV index.
     polynomial_input.x = 0;
     polynomial_input.y = uv;

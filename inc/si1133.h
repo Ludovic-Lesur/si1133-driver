@@ -53,6 +53,17 @@ typedef enum {
 
 #ifndef SI1133_DRIVER_DISABLE
 
+/*!******************************************************************
+ * \enum SI1133_light_status_t
+ * \brief SI1133 driver light data status.
+ *******************************************************************/
+typedef enum {
+    SI1133_LIGHT_STATUS_AVAILABLE = 0,
+    SI1133_LIGHT_STATUS_SENSOR_ERROR,
+    SI1133_LIGHT_STATUS_SENSOR_SATURATION,
+    SI1133_LIGHT_STATUS_LAST
+} SI1133_light_status_t;
+
 /*** SI1133 functions ***/
 
 /*!******************************************************************
@@ -74,14 +85,15 @@ SI1133_status_t SI1133_init(void);
 SI1133_status_t SI1133_de_init(void);
 
 /*!******************************************************************
- * \fn SI1133_status_t SI1133_get_light_uv_index(uint8_t i2c_address, int32_t* light_mlux, int32_t* uv_index_duvi)
+ * \fn SI1133_status_t SI1133_get_light_uv_index(uint8_t i2c_address, int32_t* light_mlux, int32_t* uv_index_duvi, SI1133_light_status_t* light_status)
  * \brief Perform ambient light and UV index measurements.
  * \param[in]   i2c_address: I2C address of the sensor.
  * \param[out]  light_mlux: Pointer to integer that will contain the ambient light in mlux.
  * \param[out]  uv_index_duvi: Pointer to integer that will contain the UV index in dUVI.
+ * \param[out]  light_status: Status of the output data.
  * \retval      Function execution status.
  *******************************************************************/
-SI1133_status_t SI1133_get_light_uv_index(uint8_t i2c_address, int32_t* light_mlux, int32_t* uv_index_duvi);
+SI1133_status_t SI1133_get_light_uv_index(uint8_t i2c_address, int32_t* light_mlux, int32_t* uv_index_duvi, SI1133_light_status_t* light_status);
 
 /*******************************************************************/
 #define SI1133_exit_error(base) { ERROR_check_exit(si1133_status, SI1133_SUCCESS, base) }
