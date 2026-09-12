@@ -598,30 +598,29 @@ SI1133_status_t SI1133_get_light_uv_index(uint8_t i2c_address, int32_t* light_ml
     if ((uv >= SI1133_SATURATION_VALUE_24BITS) || (large_white_high >= SI1133_SATURATION_VALUE_24BITS) || (medium_ir >= SI1133_SATURATION_VALUE_24BITS)) {
         // Update status.
         (*light_status) = SI1133_LIGHT_STATUS_SENSOR_SATURATION;
+        goto errors;
+    }
+    // Check dynamic.
+    if ((large_white_high > SI1133_HIGH_AMPLITUDE_THRESHOLD) || (medium_ir > SI1133_HIGH_AMPLITUDE_THRESHOLD)) {
+        // High amplitude parameters.
+        polynomial_input.x = large_white_high;
+        polynomial_input.input_fraction = SI1133_LIGHT_HIGH_INPUT_FRACTION;
+        polynomial_input.coefficients_list = &(SI1133_LIGHT_COEFFICIENTS.coefficients_high[0]);
+        polynomial_input.coefficients_list_size = SI1133_LIGHT_HIGH_COEFFICIENTS_LIST_SIZE;
     }
     else {
-        // Check dynamic.
-        if ((large_white_high > SI1133_HIGH_AMPLITUDE_THRESHOLD) || (medium_ir > SI1133_HIGH_AMPLITUDE_THRESHOLD)) {
-            // High amplitude parameters.
-            polynomial_input.x = large_white_high;
-            polynomial_input.input_fraction = SI1133_LIGHT_HIGH_INPUT_FRACTION;
-            polynomial_input.coefficients_list = &(SI1133_LIGHT_COEFFICIENTS.coefficients_high[0]);
-            polynomial_input.coefficients_list_size = SI1133_LIGHT_HIGH_COEFFICIENTS_LIST_SIZE;
-        }
-        else {
-            // Low amplitude parameters.
-            polynomial_input.x = large_white_low;
-            polynomial_input.input_fraction = SI1133_LIGHT_LOW_INPUT_FRACTION;
-            polynomial_input.coefficients_list = &(SI1133_LIGHT_COEFFICIENTS.coefficients_low[0]);
-            polynomial_input.coefficients_list_size = SI1133_LIGHT_LOW_COEFFICIENTS_LIST_SIZE;
-        }
-        // Compute lux.
-        tmp_s32 = _SI1133_compute_evaluation_polynomial(&polynomial_input);
-        tmp_s64 = ((((int64_t) tmp_s32 * (int64_t) 1000) + (int64_t) (1 << (SI1133_LIGHT_OUTPUT_FRACTION - 1))) >> SI1133_LIGHT_OUTPUT_FRACTION);
-        (*light_mlux) = ((int32_t) tmp_s64);
-        // Update status.
-        (*light_status) = SI1133_LIGHT_STATUS_AVAILABLE;
+        // Low amplitude parameters.
+        polynomial_input.x = large_white_low;
+        polynomial_input.input_fraction = SI1133_LIGHT_LOW_INPUT_FRACTION;
+        polynomial_input.coefficients_list = &(SI1133_LIGHT_COEFFICIENTS.coefficients_low[0]);
+        polynomial_input.coefficients_list_size = SI1133_LIGHT_LOW_COEFFICIENTS_LIST_SIZE;
     }
+    // Compute lux.
+    tmp_s32 = _SI1133_compute_evaluation_polynomial(&polynomial_input);
+    tmp_s64 = ((((int64_t) tmp_s32 * (int64_t) 1000) + (int64_t) (1 << (SI1133_LIGHT_OUTPUT_FRACTION - 1))) >> SI1133_LIGHT_OUTPUT_FRACTION);
+    (*light_mlux) = ((int32_t) tmp_s64);
+    // Update status.
+    (*light_status) = SI1133_LIGHT_STATUS_AVAILABLE;
     // Compute UV index.
     polynomial_input.x = 0;
     polynomial_input.y = uv;
