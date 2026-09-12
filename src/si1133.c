@@ -48,7 +48,6 @@
 #define SI1133_HIGH_AMPLITUDE_THRESHOLD             16000
 
 #define SI1133_SATURATION_VALUE_24BITS              0x7FFFFF
-#define SI1133_SATURATION_VALUE_MLUX                128000000
 
 /*** SI1133 local structures ***/
 
@@ -184,6 +183,11 @@ static const SI1133_coefficient_t SI1133_UV_INDEX_COEFFICIENTS[SI1133_UV_INDEX_C
 /*** SI1133 local functions ***/
 
 /*******************************************************************/
+#define _SI1133_check_status_and_light_status(void) { \
+    if ((status != SI1133_SUCCESS) || ((*light_status) != SI1133_LIGHT_STATUS_SENSOR_ERROR)) goto errors; \
+}
+
+/*******************************************************************/
 static SI1133_status_t _SI1133_write_register(uint8_t i2c_address, SI1133_register_t reg_addr, uint8_t* data, uint8_t data_size_bytes) {
     // Local variables.
     SI1133_status_t status = SI1133_SUCCESS;
@@ -291,7 +295,7 @@ errors:
 }
 
 /*******************************************************************/
-static SI1133_status_t _SI1133_wait_for_command_completion(uint8_t i2c_address, uint8_t previous_counter, SI1133_status_t error_base) {
+static SI1133_status_t _SI1133_wait_for_command_completion(uint8_t i2c_address, uint8_t previous_counter, SI1133_status_t error_base, SI1133_light_status_t* light_status) {
     // Local variables.
     SI1133_status_t status = SI1133_SUCCESS;
     uint8_t current_counter = 0;
@@ -304,8 +308,19 @@ static SI1133_status_t _SI1133_wait_for_command_completion(uint8_t i2c_address, 
         if (status != SI1133_SUCCESS) goto errors;
         // Check flag.
         if (error_flag != 0) {
-            // Ignore saturation error.
-            status = ((current_counter == SI1133_COMMAND_ERROR_SATURATION) ? SI1133_SUCCESS : (error_base + current_counter));
+            // Check error.
+            switch (current_counter) {
+            case SI1133_COMMAND_ERROR_SATURATION:
+                // Ignore error because it is expected for the low dynamic diode.
+                break;
+            case SI1133_COMMAND_ERROR_OVERFLOW:
+                // Ignore error because it is expected in very high light conditions.
+                (*light_status) = SI1133_LIGHT_STATUS_SENSOR_OVERFLOW;
+                break;
+            default:
+                status = (error_base + current_counter);
+                break;
+            }
             goto errors;
         }
         // Delay between reading.
@@ -324,7 +339,7 @@ errors:
 }
 
 /*******************************************************************/
-static SI1133_status_t _SI1133_send_command_with_completion(uint8_t i2c_address, SI1133_commmand_t command) {
+static SI1133_status_t _SI1133_send_command_with_completion(uint8_t i2c_address, SI1133_commmand_t command, SI1133_light_status_t* light_status) {
     // Local variables.
     SI1133_status_t status = SI1133_SUCCESS;
     uint8_t previous_counter = 0;
@@ -339,14 +354,14 @@ static SI1133_status_t _SI1133_send_command_with_completion(uint8_t i2c_address,
     status = _SI1133_write_register(i2c_address, SI1133_REGISTER_COMMAND, &command, 1);
     if (status != SI1133_SUCCESS) goto errors;
     // Wait for completion.
-    status = _SI1133_wait_for_command_completion(i2c_address, previous_counter, SI1133_ERROR_COMMAND_COMPLETION);
+    status = _SI1133_wait_for_command_completion(i2c_address, previous_counter, SI1133_ERROR_COMMAND_COMPLETION, light_status);
     if (status != SI1133_SUCCESS) goto errors;
 errors:
     return status;
 }
 
 /*******************************************************************/
-static SI1133_status_t _SI1133_set_parameter_with_completion(uint8_t i2c_address, SI1133_parameter_t parameter, uint8_t value) {
+static SI1133_status_t _SI1133_set_parameter_with_completion(uint8_t i2c_address, SI1133_parameter_t parameter, uint8_t value, SI1133_light_status_t* light_status) {
     // Local variables.
     SI1133_status_t status = SI1133_SUCCESS;
     uint8_t parameter_write_command[2];
@@ -365,7 +380,7 @@ static SI1133_status_t _SI1133_set_parameter_with_completion(uint8_t i2c_address
     status = _SI1133_write_register(i2c_address, SI1133_REGISTER_HOSTIN0, parameter_write_command, 2);
     if (status != SI1133_SUCCESS) goto errors;
     // Wait for completion.
-    status = _SI1133_wait_for_command_completion(i2c_address, previous_counter, SI1133_ERROR_PARAMETER_COMPLETION);
+    status = _SI1133_wait_for_command_completion(i2c_address, previous_counter, SI1133_ERROR_PARAMETER_COMPLETION, light_status);
     if (status != SI1133_SUCCESS) goto errors;
 errors:
     return status;
@@ -525,45 +540,45 @@ SI1133_status_t SI1133_get_light_uv_index(uint8_t i2c_address, int32_t* light_ml
     status = SI1133_HW_delay_milliseconds(SI1133_RESET_DELAY_MS);
     if (status != SI1133_SUCCESS) goto errors;
     // Disable burst mode.
-    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_BURST, 0x01);
-    if (status != SI1133_SUCCESS) goto errors;
+    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_BURST, 0x01, light_status);
+    _SI1133_check_status_and_light_status();
     // Enable channel 0 to 3.
-    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_CH_LIST, channel_mask);
-    if (status != SI1133_SUCCESS) goto errors;
+    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_CH_LIST, channel_mask, light_status);
+    _SI1133_check_status_and_light_status();
     // Configure channel 0 for UV index.
-    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_ADCCONFIG0, 0x78);
-    if (status != SI1133_SUCCESS) goto errors;
-    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_ADCSENS0, 0x71);
-    if (status != SI1133_SUCCESS) goto errors;
-    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_ADCPOST0, 0x40);
-    if (status != SI1133_SUCCESS) goto errors;
+    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_ADCCONFIG0, 0x78, light_status);
+    _SI1133_check_status_and_light_status();
+    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_ADCSENS0, 0x71, light_status);
+    _SI1133_check_status_and_light_status();
+    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_ADCPOST0, 0x40, light_status);
+    _SI1133_check_status_and_light_status();
     // Configure channel 1 for large white.
-    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_ADCCONFIG1, 0x4D);
-    if (status != SI1133_SUCCESS) goto errors;
-    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_ADCSENS1, 0xE1);
-    if (status != SI1133_SUCCESS) goto errors;
-    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_ADCPOST1, 0x40);
-    if (status != SI1133_SUCCESS) goto errors;
+    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_ADCCONFIG1, 0x4D, light_status);
+    _SI1133_check_status_and_light_status();
+    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_ADCSENS1, 0xE1, light_status);
+    _SI1133_check_status_and_light_status();
+    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_ADCPOST1, 0x40, light_status);
+    _SI1133_check_status_and_light_status();
     // Configure channel 2 for medium IR.
-    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_ADCCONFIG2, 0x41);
-    if (status != SI1133_SUCCESS) goto errors;
-    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_ADCSENS2, 0xE1);
-    if (status != SI1133_SUCCESS) goto errors;
-    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_ADCPOST2, 0x50);
-    if (status != SI1133_SUCCESS) goto errors;
+    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_ADCCONFIG2, 0x41, light_status);
+    _SI1133_check_status_and_light_status();
+    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_ADCSENS2, 0xE1, light_status);
+    _SI1133_check_status_and_light_status();
+    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_ADCPOST2, 0x50, light_status);
+    _SI1133_check_status_and_light_status();
     // Configure channel 3 for large white.
-    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_ADCCONFIG3, 0x4D);
-    if (status != SI1133_SUCCESS) goto errors;
-    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_ADCSENS3, 0x87);
-    if (status != SI1133_SUCCESS) goto errors;
-    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_ADCPOST3, 0x40);
-    if (status != SI1133_SUCCESS) goto errors;
+    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_ADCCONFIG3, 0x4D, light_status);
+    _SI1133_check_status_and_light_status();
+    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_ADCSENS3, 0x87, light_status);
+    _SI1133_check_status_and_light_status();
+    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_ADCPOST3, 0x40, light_status);
+    _SI1133_check_status_and_light_status();
     // Enable interrupts.
     status = _SI1133_write_register(i2c_address, SI1133_REGISTER_IRQ_ENABLE, &channel_mask, 1);
     if (status != SI1133_SUCCESS) goto errors;
     // Start conversion.
-    status = _SI1133_send_command_with_completion(i2c_address, SI1133_COMMAND_FORCE_CH);
-    if (status != SI1133_SUCCESS) goto errors;
+    status = _SI1133_send_command_with_completion(i2c_address, SI1133_COMMAND_FORCE_CH, light_status);
+    _SI1133_check_status_and_light_status();
     // Wait for conversion to complete (IRQ0='1').
     status = _SI1133_wait_flag(i2c_address, SI1133_REGISTER_IRQ_STATUS, 0, SI1133_ERROR_TIMEOUT);
     if (status != SI1133_SUCCESS) goto errors;
@@ -580,9 +595,8 @@ SI1133_status_t SI1133_get_light_uv_index(uint8_t i2c_address, int32_t* light_ml
     polynomial_input.y = medium_ir;
     polynomial_input.output_fraction = SI1133_LIGHT_OUTPUT_FRACTION;
     // Check dynamic.
-    if ((large_white_high >= SI1133_SATURATION_VALUE_24BITS) || (medium_ir >= SI1133_SATURATION_VALUE_24BITS)) {
+    if ((uv >= SI1133_SATURATION_VALUE_24BITS) || (large_white_high >= SI1133_SATURATION_VALUE_24BITS) || (medium_ir >= SI1133_SATURATION_VALUE_24BITS)) {
         // Update status.
-        (*light_mlux) = SI1133_SATURATION_VALUE_MLUX;
         (*light_status) = SI1133_LIGHT_STATUS_SENSOR_SATURATION;
     }
     else {
