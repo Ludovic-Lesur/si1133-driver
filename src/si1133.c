@@ -20,7 +20,7 @@
 
 #define SI1133_BURST_WRITE_MAX_SIZE                 10
 
-#define SI1133_RESET_DELAY_MS                       30
+#define SI1133_RESET_DELAY_MS                       50
 #define SI1133_SUB_DELAY_MS                         10
 #define SI1133_TIMEOUT_MS                           2000
 
@@ -523,6 +523,9 @@ SI1133_status_t SI1133_get_light_uv_index(uint8_t i2c_address, int32_t* light_ml
     status = _SI1133_send_command(i2c_address, SI1133_COMMAND_RESET);
     if (status != SI1133_SUCCESS) goto errors;
     status = SI1133_HW_delay_milliseconds(SI1133_RESET_DELAY_MS);
+    if (status != SI1133_SUCCESS) goto errors;
+    // Disable burst mode.
+    status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_BURST, 0x01);
     if (status != SI1133_SUCCESS) goto errors;
     // Enable channel 0 to 3.
     status = _SI1133_set_parameter_with_completion(i2c_address, SI1133_PARAMETER_CH_LIST, channel_mask);
