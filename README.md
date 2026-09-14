@@ -1,6 +1,6 @@
 # Description
 
-This repository contains the **SI1133** UV index sensor driver.
+This repository contains the **SI1133** light and UV index sensor driver.
 
 # Dependencies
 
@@ -13,6 +13,7 @@ Here is the versions compatibility table:
 
 | **si1133-driver** | **embedded-utils** |
 |:---:|:---:|
+| [sw2.0](https://github.com/Ludovic-Lesur/si1133-driver/releases/tag/sw2.0) | >= [sw7.0](https://github.com/Ludovic-Lesur/embedded-utils/releases/tag/sw7.0) |
 | [sw1.7](https://github.com/Ludovic-Lesur/si1133-driver/releases/tag/sw1.7) | >= [sw5.0](https://github.com/Ludovic-Lesur/embedded-utils/releases/tag/sw5.0) |
 | [sw1.6](https://github.com/Ludovic-Lesur/si1133-driver/releases/tag/sw1.6) | >= [sw5.0](https://github.com/Ludovic-Lesur/embedded-utils/releases/tag/sw5.0) |
 | [sw1.5](https://github.com/Ludovic-Lesur/si1133-driver/releases/tag/sw1.5) | >= [sw5.0](https://github.com/Ludovic-Lesur/embedded-utils/releases/tag/sw5.0) |
