@@ -31,6 +31,11 @@ Here is the versions compatibility table:
 | `SI1133_DRIVER_DISABLE` | `defined` / `undefined` | Disable the SI1133 driver. |
 | `SI1133_DRIVER_I2C_ERROR_BASE_LAST` | `<value>` | Last error base of the low level I2C driver. |
 | `SI1133_DRIVER_DELAY_ERROR_BASE_LAST` | `<value>` | Last error base of the low level delay driver. |
+| `SI1133_DRIVER_CALIBRATION_MODE` | `0` / `1` / `2` | Sensor calibration mode: `0` = disabled, `1` = fixed, `2` = dynamic. |
+| `SI1133_DRIVER_CALIBRATION_LUX_GAIN_NUMERATOR` | `<value>` | Light gain numerator (fixed calibration mode only). |
+| `SI1133_DRIVER_CALIBRATION_LUX_GAIN_DENOMINATOR` | `<value>` | Light gain denominator (fixed calibration mode only). |
+| `SI1133_DRIVER_CALIBRATION_UVI_GAIN_NUMERATOR` | `<value>` | UV index gain numerator (fixed calibration mode only). |
+| `SI1133_DRIVER_CALIBRATION_UVI_GAIN_DENOMINATOR` | `<value>` | UV index gain denominator (fixed calibration mode only). |
 
 # Build
 
@@ -45,6 +50,11 @@ cmake -DCMAKE_TOOLCHAIN_FILE="<toolchain_file_path>" \
       -DEMBEDDED_UTILS_PATH="<embedded-utils_path>" \
       -DSI1133_DRIVER_I2C_ERROR_BASE_LAST=0 \
       -DSI1133_DRIVER_DELAY_ERROR_BASE_LAST=0 \
+      -DSI1133_DRIVER_CALIBRATION_MODE=0 \
+      -DSI1133_DRIVER_CALIBRATION_LUX_GAIN_NUMERATOR=1 \
+      -DSI1133_DRIVER_CALIBRATION_LUX_GAIN_DENOMINATOR=1 \
+      -DSI1133_DRIVER_CALIBRATION_UVI_GAIN_NUMERATOR=1 \
+      -DSI1133_DRIVER_CALIBRATION_UVI_GAIN_DENOMINATOR=1 \
       -G "Unix Makefiles" ..
 make all
 ```

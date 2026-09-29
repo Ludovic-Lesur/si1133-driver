@@ -169,6 +169,16 @@ typedef struct {
     uint8_t coefficients_list_size;
 } SI1133_polynomial_input_t;
 
+#if ((defined SI1133_DRIVER_CALIBRATION_MODE) && (SI1133_DRIVER_CALIBRATION_MODE == 2))
+/*******************************************************************/
+typedef struct {
+    int32_t lux_gain_numerator;
+    int32_t lux_gain_denominator;
+    int32_t uvi_gain_numerator;
+    int32_t uvi_gain_denominator;
+} SI1133_context_t;
+#endif
+
 /*** SI1133 local global variables ***/
 
 static const SI1133_light_coefficients SI1133_LIGHT_COEFFICIENTS = {
@@ -179,6 +189,10 @@ static const SI1133_light_coefficients SI1133_LIGHT_COEFFICIENTS = {
 static const SI1133_coefficient_t SI1133_UV_INDEX_COEFFICIENTS[SI1133_UV_INDEX_COEFFICIENTS_LIST_SIZE] = {
     { 1281, 30902 }, { -638, 46301 }
 };
+
+#if ((defined SI1133_DRIVER_CALIBRATION_MODE) && (SI1133_DRIVER_CALIBRATION_MODE == 2))
+static SI1133_context_t si1133_ctx;
+#endif
 
 /*** SI1133 local functions ***/
 
@@ -497,6 +511,13 @@ static int32_t _SI1133_compute_evaluation_polynomial(SI1133_polynomial_input_t* 
 SI1133_status_t SI1133_init(void) {
     // Local variables.
     SI1133_status_t status = SI1133_SUCCESS;
+#if ((defined SI1133_DRIVER_CALIBRATION_MODE) && (SI1133_DRIVER_CALIBRATION_MODE == 2))
+    // Init context.
+    si1133_ctx.lux_gain_numerator = 1;
+    si1133_ctx.lux_gain_denominator = 1;
+    si1133_ctx.uvi_gain_numerator = 1;
+    si1133_ctx.uvi_gain_denominator = 1;
+#endif
     // Init hardware interface.
     status = SI1133_HW_init();
     if (status != SI1133_SUCCESS) goto errors;
@@ -618,6 +639,13 @@ SI1133_status_t SI1133_get_light_uv_index(uint8_t i2c_address, int32_t* light_ml
     // Compute lux.
     tmp_s32 = _SI1133_compute_evaluation_polynomial(&polynomial_input);
     tmp_s64 = ((((int64_t) tmp_s32 * (int64_t) 1000) + (int64_t) (1 << (SI1133_LIGHT_OUTPUT_FRACTION - 1))) >> SI1133_LIGHT_OUTPUT_FRACTION);
+#ifdef SI1133_DRIVER_CALIBRATION_MODE
+#if (SI1133_DRIVER_CALIBRATION_MODE == 1)
+    tmp_s64 = ((tmp_s64 * ((int64_t) SI1133_DRIVER_CALIBRATION_LUX_GAIN_NUMERATOR)) / ((int64_t) SI1133_DRIVER_CALIBRATION_LUX_GAIN_DENOMINATOR));
+#elif (SI1133_DRIVER_CALIBRATION_MODE == 2)
+    tmp_s64 = ((tmp_s64 * ((int64_t) si1133_ctx.lux_gain_numerator)) / ((int64_t) si1133_ctx.lux_gain_denominator));
+#endif
+#endif
     (*light_mlux) = ((int32_t) tmp_s64);
     // Update status.
     (*light_status) = SI1133_LIGHT_STATUS_AVAILABLE;
@@ -630,9 +658,47 @@ SI1133_status_t SI1133_get_light_uv_index(uint8_t i2c_address, int32_t* light_ml
     polynomial_input.coefficients_list_size = SI1133_UV_INDEX_COEFFICIENTS_LIST_SIZE;
     tmp_s32 = _SI1133_compute_evaluation_polynomial(&polynomial_input);
     tmp_s64 = ((((int64_t) tmp_s32 * (int64_t) 10) + (int64_t) (1 << (SI1133_UV_INDEX_OUTPUT_FRACTION - 1))) >> SI1133_UV_INDEX_OUTPUT_FRACTION);
+#ifdef SI1133_DRIVER_CALIBRATION_MODE
+#if (SI1133_DRIVER_CALIBRATION_MODE == 1)
+    tmp_s64 = ((tmp_s64 * ((int64_t) SI1133_DRIVER_CALIBRATION_UVI_GAIN_NUMERATOR)) / ((int64_t) SI1133_DRIVER_CALIBRATION_UVI_GAIN_DENOMINATOR));
+#elif (SI1133_DRIVER_CALIBRATION_MODE == 2)
+    tmp_s64 = ((tmp_s64 * ((int64_t) si1133_ctx.uvi_gain_numerator)) / ((int64_t) si1133_ctx.uvi_gain_denominator));
+#endif
+#endif
     (*uv_index_duvi) = ((int32_t) tmp_s64);
 errors:
     return status;
 }
+
+#if ((defined SI1133_DRIVER_CALIBRATION_MODE) && (SI1133_DRIVER_CALIBRATION_MODE == 2))
+/*******************************************************************/
+SI1133_status_t SI1133_set_calibration(int32_t lux_gain_numerator, int32_t lux_gain_denominator, int32_t uvi_gain_numerator, int32_t uvi_gain_denominator) {
+    // Local variables.
+    SI1133_status_t status = SI1133_SUCCESS;
+    // Check parameters.
+    if ((lux_gain_numerator == 0) || (lux_gain_denominator == 0) || (uvi_gain_numerator == 0) || (uvi_gain_denominator == 0)) {
+        status = SI1133_ERROR_CALIBRATION_GAIN;
+        goto errors;
+    }
+    // Update context.
+    si1133_ctx.lux_gain_numerator = lux_gain_numerator;
+    si1133_ctx.lux_gain_denominator = lux_gain_denominator;
+    si1133_ctx.uvi_gain_numerator = uvi_gain_numerator;
+    si1133_ctx.uvi_gain_denominator = uvi_gain_denominator;
+errors:
+    return status;
+}
+#endif
+
+/*** SI1133 compilation flags check ***/
+
+#if ((defined SI1133_DRIVER_CALIBRATION_MODE) && (SI1133_DRIVER_CALIBRATION_MODE == 1))
+#if ((SI1133_DRIVER_CALIBRATION_LUX_GAIN_NUMERATOR == 0) || (SI1133_DRIVER_CALIBRATION_LUX_GAIN_DENOMINATOR == 0))
+#error "si1133-driver: LUX gain numerator and denominator must > 0"
+#endif
+#if ((SI1133_DRIVER_CALIBRATION_UVI_GAIN_NUMERATOR == 0) || (SI1133_DRIVER_CALIBRATION_UVI_GAIN_DENOMINATOR == 0))
+#error "si1133-driver: UVI gain numerator and denominator must > 0"
+#endif
+#endif
 
 #endif /* SI1133_DRIVER_DISABLE */

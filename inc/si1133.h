@@ -43,6 +43,7 @@ typedef enum {
     SI1133_ERROR_PARAMETER_COMPLETION = (SI1133_ERROR_COMMAND_COMPLETION + SI1133_COMMAND_ERROR_LAST),
     SI1133_ERROR_COMMAND_COUNTER = (SI1133_ERROR_PARAMETER_COMPLETION + SI1133_COMMAND_ERROR_LAST),
     SI1133_ERROR_TIMEOUT,
+    SI1133_ERROR_CALIBRATION_GAIN,
     // Low level drivers errors.
     SI1133_ERROR_HW_FUNCTION_NOT_IMPLEMENTED,
     SI1133_ERROR_BASE_I2C = ERROR_BASE_STEP,
@@ -95,6 +96,20 @@ SI1133_status_t SI1133_de_init(void);
  * \retval      Function execution status.
  *******************************************************************/
 SI1133_status_t SI1133_get_light_uv_index(uint8_t i2c_address, int32_t* light_mlux, int32_t* uv_index_duvi, SI1133_light_status_t* light_status);
+
+#if ((defined SI1133_DRIVER_CALIBRATION_MODE) && (SI1133_DRIVER_CALIBRATION_MODE == 2))
+/*!******************************************************************
+ * \fn SI1133_status_t SI1133_set_calibration(int32_t lux_gain_numerator, int32_t lux_gain_denominator, int32_t uvi_gain_numerator, int32_t uvi_gain_denominator)
+ * \brief Set SI1133 driver calibration factors.
+ * \param[in]   lux_gain_numerator: Numerator of the gain applied to the light measurement.
+ * \param[in]   lux_gain_denominator: Denominator of the gain applied to the light measurement.
+ * \param[in]   uvi_gain_numerator: Numerator of the gain applied to the UV index measurement.
+ * \param[in]   uvi_gain_denominator: Denominator of the gain applied to the UV index measurement.
+ * \param[out]  none
+ * \retval      Function execution status.
+ *******************************************************************/
+SI1133_status_t SI1133_set_calibration(int32_t lux_gain_numerator, int32_t lux_gain_denominator, int32_t uvi_gain_numerator, int32_t uvi_gain_denominator);
+#endif
 
 /*******************************************************************/
 #define SI1133_exit_error(base) { ERROR_check_exit(si1133_status, SI1133_SUCCESS, base) }
