@@ -30,7 +30,7 @@ if(${BUILD_MODE} STREQUAL STATIC)
     endmacro()
     
     # Compilation flags.
-    add_compilation_flag(SI1133_DRIVERS_DISABLE "Disable the SI1133 driver." OFF)
+    add_compilation_flag(SI1133_DRIVER_DISABLE "Disable the SI1133 driver." OFF)
     add_compilation_flag(SI1133_DRIVER_I2C_ERROR_BASE_LAST "Last error base of the low level I2C driver." 0)
     add_compilation_flag(SI1133_DRIVER_DELAY_ERROR_BASE_LAST "Last error base of the low level delay driver." 0)
     add_compilation_flag(SI1133_DRIVER_CALIBRATION_MODE "Sensor calibration mode: 0 = disabled, 1 = fixed, 2 = dynamic" 0)
