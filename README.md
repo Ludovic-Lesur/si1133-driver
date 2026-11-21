@@ -13,6 +13,7 @@ Here is the versions compatibility table:
 
 | **si1133-driver** | **embedded-utils** |
 |:---:|:---:|
+| [sw3.1](https://github.com/Ludovic-Lesur/si1133-driver/releases/tag/sw3.1) | >= [sw7.0](https://github.com/Ludovic-Lesur/embedded-utils/releases/tag/sw7.0) |
 | [sw3.0](https://github.com/Ludovic-Lesur/si1133-driver/releases/tag/sw3.0) | >= [sw7.0](https://github.com/Ludovic-Lesur/embedded-utils/releases/tag/sw7.0) |
 | [sw2.0](https://github.com/Ludovic-Lesur/si1133-driver/releases/tag/sw2.0) | >= [sw7.0](https://github.com/Ludovic-Lesur/embedded-utils/releases/tag/sw7.0) |
 | [sw1.7](https://github.com/Ludovic-Lesur/si1133-driver/releases/tag/sw1.7) | >= [sw5.0](https://github.com/Ludovic-Lesur/embedded-utils/releases/tag/sw5.0) |
